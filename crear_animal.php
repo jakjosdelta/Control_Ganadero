@@ -1,8 +1,11 @@
 <?php
 require_once 'includes/functions.php';
 
+// Verificar CSRF en POST
+\Core\Security::requireCsrf();
+
 $errores = [];
-$mensaje = '';
+$mensaje = [];
 
 // Función para generar código automático
 function generarCodigoAutomatico($tipo) {
@@ -39,35 +42,47 @@ function generarCodigoAutomatico($tipo) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Guardar old input para repoblar formulario
+    \Core\Security::saveOld($_POST);
+
     try {
-        // Generar código automático basado en el tipo
-        $codigoGenerado = generarCodigoAutomatico($_POST['tipo']);
-        $_POST['codigo'] = $codigoGenerado;
-        // Validaciones
-        if (empty($_POST['tipo'])) {
-            $errores[] = "El tipo es obligatorio";
+        // Validación con nueva clase Validator
+        $rules = [
+            'tipo' => 'required|in:vaca,ternero,toro',
+            'sexo' => 'required|in:hembra,macho',
+            'fecha_nacimiento' => 'required|date|date_before:' . date('Y-m-d'),
+            'peso_actual' => 'decimal|min:0|max:9999.99',
+            'precio_venta' => 'decimal|min:0|max:999999.99',
+            'fecha_venta' => 'date',
+            'imagenes' => 'file_mimes:image/jpeg,image/png,image/gif|file_max:5120', // 5MB
+        ];
+
+        $validation = \Core\Security::validate($_POST, $rules);
+
+        if (!$validation['valid']) {
+            $errores = [];
+            foreach ($validation['errors'] as $fieldErrors) {
+                $errores = array_merge($errores, $fieldErrors);
+            }
+        } else {
+            // Generar código automático basado en el tipo
+            $codigoGenerado = generarCodigoAutomatico($_POST['tipo']);
+            $_POST['codigo'] = $codigoGenerado;
+
+            // Validar unicidad de código (por si acaso)
+            if (!validarCodigo($codigoGenerado)) {
+                $errores[] = "El código generado ya existe. Intente de nuevo.";
+            }
         }
-        if (empty($_POST['sexo'])) {
-            $errores[] = "El sexo es obligatorio";
-        }
-        if (empty($_POST['fecha_nacimiento'])) {
-            $errores[] = "La fecha de nacimiento es obligatoria";
-        }
-        
-        // Validar imagen si se subió
-        if (!empty($_FILES['imagen']['name'])) {
-            $erroresImagen = validarImagen($_FILES['imagen']);
-            $errores = array_merge($errores, $erroresImagen);
-        }
-        
+
         if (empty($errores)) {
             // Crear animal primero
-            $id = crearAnimal($_POST, null); // No pasamos imagen aquí
-            
+            $id = crearAnimal($_POST, null);
+
             // Subir imágenes si se seleccionaron
             if (!empty($_FILES['imagenes']['name'][0])) {
                 $totalArchivos = count($_FILES['imagenes']['name']);
-                
+
                 for ($i = 0; $i < $totalArchivos; $i++) {
                     if ($_FILES['imagenes']['error'][$i] === UPLOAD_ERR_OK) {
                         $file = [
@@ -77,17 +92,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                             'error' => $_FILES['imagenes']['error'][$i],
                             'size' => $_FILES['imagenes']['size'][$i]
                         ];
-                        
+
                         try {
                             agregarImagenAnimal($id, $file, null);
                         } catch (Exception $e) {
-                            // Continuar aunque falle una imagen
+                            // Log error pero continuar
+                            error_log("Error subiendo imagen: " . $e->getMessage());
                         }
                     }
                 }
             }
-            
-            header('Location: ver_animal.php?id=' . $id . '&mensaje=creado');
+
+            \Core\Security::clearOld();
+            \Core\Security::setFlash('success', 'Animal creado exitosamente');
+            header('Location: ver_animal.php?id=' . $id);
             exit;
         }
     } catch (Exception $e) {
@@ -308,6 +326,24 @@ $toros = obtenerToros();
     
     <div class="container">
         <div class="card">
+            <?php
+            $flashes = \Core\Security::getFlashes();
+            if (!empty($flashes['success'])): ?>
+            <div class="errores" style="background:#e8f5e9;border-color:#4caf50;color:#2e7d32;">
+                <?php foreach ($flashes['success'] as $msg): ?>
+                    <strong>✅ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($flashes['error'])): ?>
+            <div class="errores">
+                <?php foreach ($flashes['error'] as $msg): ?>
+                    <strong>❌ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
             <?php if (!empty($errores)): ?>
             <div class="errores">
                 <strong>⚠️ Errores encontrados:</strong>
@@ -320,6 +356,7 @@ $toros = obtenerToros();
             <?php endif; ?>
             
             <form method="POST" enctype="multipart/form-data">
+                <?= \Core\Security::csrfField() ?>
                 <h3 class="section-title">📋 Información Básica</h3>
                 
                
@@ -327,16 +364,16 @@ $toros = obtenerToros();
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Nombre</label>
-                        <input type="text" name="nombre" value="<?php echo htmlspecialchars($_POST['nombre'] ?? ''); ?>" placeholder="Ej: Estrella">
+                        <input type="text" name="nombre" value="<?php echo htmlspecialchars(\Core\Security::old('nombre')); ?>" placeholder="Ej: Estrella">
                     </div>
 
                     <div class="form-group">
                         <label>Tipo *</label>
                         <select name="tipo" required>
                             <option value="">Seleccione...</option>
-                            <option value="vaca" <?php echo ($_POST['tipo'] ?? '') === 'vaca' ? 'selected' : ''; ?>>Vaca</option>
-                            <option value="ternero" <?php echo ($_POST['tipo'] ?? '') === 'ternero' ? 'selected' : ''; ?>>Ternero</option>
-                            <option value="toro" <?php echo ($_POST['tipo'] ?? '') === 'toro' ? 'selected' : ''; ?>>Toro</option>
+                            <option value="vaca" <?php echo \Core\Security::old('tipo') === 'vaca' ? 'selected' : ''; ?>>Vaca</option>
+                            <option value="ternero" <?php echo \Core\Security::old('tipo') === 'ternero' ? 'selected' : ''; ?>>Ternero</option>
+                            <option value="toro" <?php echo \Core\Security::old('tipo') === 'toro' ? 'selected' : ''; ?>>Toro</option>
                         </select>
                     </div>
                         
@@ -345,8 +382,8 @@ $toros = obtenerToros();
                         <label>Sexo *</label>
                         <select name="sexo" required>
                             <option value="">Seleccione...</option>
-                            <option value="hembra" <?php echo ($_POST['sexo'] ?? '') === 'hembra' ? 'selected' : ''; ?>>Hembra</option>
-                            <option value="macho" <?php echo ($_POST['sexo'] ?? '') === 'macho' ? 'selected' : ''; ?>>Macho</option>
+                            <option value="hembra" <?php echo \Core\Security::old('sexo') === 'hembra' ? 'selected' : ''; ?>>Hembra</option>
+                            <option value="macho" <?php echo \Core\Security::old('sexo') === 'macho' ? 'selected' : ''; ?>>Macho</option>
                         </select>
                     </div>
                     
@@ -357,17 +394,17 @@ $toros = obtenerToros();
                     
                     <div class="form-group">
                         <label>Peso Actual (kg)</label>
-                        <input type="number" step="0.01" name="peso_actual" value="<?php echo htmlspecialchars($_POST['peso_actual'] ?? ''); ?>" placeholder="Ej: 450.50">
+                        <input type="number" step="0.01" name="peso_actual" value="<?php echo htmlspecialchars(\Core\Security::old('peso_actual')); ?>" placeholder="Ej: 450.50">
                     </div>
                     
                     <div class="form-group">
                         <label>Raza</label>
-                        <input type="text" name="raza" value="<?php echo htmlspecialchars($_POST['raza'] ?? ''); ?>" placeholder="Ej: Holstein">
+                        <input type="text" name="raza" value="<?php echo htmlspecialchars(\Core\Security::old('raza')); ?>" placeholder="Ej: Holstein">
                     </div>
                     
                     <div class="form-group">
                         <label>Color</label>
-                        <input type="text" name="color" value="<?php echo htmlspecialchars($_POST['color'] ?? ''); ?>" placeholder="Ej: Negro con blanco">
+                        <input type="text" name="color" value="<?php echo htmlspecialchars(\Core\Security::old('color')); ?>" placeholder="Ej: Negro con blanco">
                     </div>
                 </div>
                 
@@ -379,7 +416,7 @@ $toros = obtenerToros();
                         <select name="madre_id">
                             <option value="">Sin madre registrada</option>
                             <?php foreach ($vacas as $vaca): ?>
-                                <option value="<?php echo $vaca['id']; ?>" <?php echo ($_POST['madre_id'] ?? '') == $vaca['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $vaca['id']; ?>" <?php echo \Core\Security::old('madre_id') == $vaca['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($vaca['codigo'] . ' - ' . $vaca['nombre']); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -391,7 +428,7 @@ $toros = obtenerToros();
                         <select name="padre_id">
                             <option value="">Sin padre registrado</option>
                             <?php foreach ($toros as $toro): ?>
-                                <option value="<?php echo $toro['id']; ?>" <?php echo ($_POST['padre_id'] ?? '') == $toro['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $toro['id']; ?>" <?php echo \Core\Security::old('padre_id') == $toro['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($toro['codigo'] . ' - ' . $toro['nombre']); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -405,15 +442,15 @@ $toros = obtenerToros();
                     <div class="form-group">
                         <label>Estado</label>
                         <select name="estado_venta" id="estado_venta" onchange="toggleCamposVenta()">
-                            <option value="disponible" <?php echo ($_POST['estado_venta'] ?? 'disponible') === 'disponible' ? 'selected' : ''; ?>>Disponible</option>
-                            <option value="reservado" <?php echo ($_POST['estado_venta'] ?? '') === 'reservado' ? 'selected' : ''; ?>>Reservado</option>
-                            <option value="vendido" <?php echo ($_POST['estado_venta'] ?? '') === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
+                            <option value="disponible" <?php echo \Core\Security::old('estado_venta', 'disponible') === 'disponible' ? 'selected' : ''; ?>>Disponible</option>
+                            <option value="reservado" <?php echo \Core\Security::old('estado_venta') === 'reservado' ? 'selected' : ''; ?>>Reservado</option>
+                            <option value="vendido" <?php echo \Core\Security::old('estado_venta') === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label>Precio de Venta ($)</label>
-                        <input type="number" step="0.01" name="precio_venta" value="<?php echo htmlspecialchars($_POST['precio_venta'] ?? ''); ?>">
+                        <input type="number" step="0.01" name="precio_venta" value="<?php echo htmlspecialchars(\Core\Security::old('precio_venta')); ?>">
                     </div>
                 </div>
                 
@@ -421,12 +458,12 @@ $toros = obtenerToros();
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Fecha de Venta</label>
-                            <input type="date" name="fecha_venta" value="<?php echo htmlspecialchars($_POST['fecha_venta'] ?? ''); ?>">
+                            <input type="date" name="fecha_venta" value="<?php echo htmlspecialchars(\Core\Security::old('fecha_venta')); ?>">
                         </div>
                         
                         <div class="form-group">
                             <label>Comprador</label>
-                            <input type="text" name="comprador" value="<?php echo htmlspecialchars($_POST['comprador'] ?? ''); ?>" placeholder="Nombre del comprador">
+                            <input type="text" name="comprador" value="<?php echo htmlspecialchars(\Core\Security::old('comprador')); ?>" placeholder="Nombre del comprador">
                         </div>
                     </div>
                 </div>
@@ -447,7 +484,7 @@ $toros = obtenerToros();
                 <h3 class="section-title">📝 Observaciones</h3>
                 
                 <div class="form-group full">
-                    <textarea name="observaciones" placeholder="Notas adicionales sobre el animal..."><?php echo htmlspecialchars($_POST['observaciones'] ?? ''); ?></textarea>
+                    <textarea name="observaciones" placeholder="Notas adicionales sobre el animal..."><?php echo htmlspecialchars(\Core\Security::old('observaciones')); ?></textarea>
                 </div>
                 
                 <div style="margin-top: 30px;">

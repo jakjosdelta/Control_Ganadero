@@ -46,8 +46,28 @@ $prenezActivas = $db->query("SELECT COUNT(*) as total FROM prenez WHERE estado I
             <p>Sistema de Gestión de Ganado - JosephG</p>
         </div>
     </header>
-    
+
     <div class="container">
+        <?php
+        $flashes = \Core\Security::getFlashes();
+        if (!empty($flashes['success'])): ?>
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <?php foreach ($flashes['success'] as $msg): ?>
+                <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($msg); ?>
+            <?php endforeach; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
+
+        <?php if (!empty($flashes['error'])): ?>
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <?php foreach ($flashes['error'] as $msg): ?>
+                <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($msg); ?>
+            <?php endforeach; ?>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        <?php endif; ?>
+
         <!-- Menú de navegación -->
         <nav class="menu-nav">
             <div class="row g-2">

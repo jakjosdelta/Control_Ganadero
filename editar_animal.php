@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/functions.php';
 
+// Verificar CSRF en POST
+\Core\Security::requireCsrf();
+
 $id = $_GET['id'] ?? 0;
 $animal = obtenerAnimal($id);
 
@@ -12,28 +15,36 @@ if (!$animal) {
 $errores = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Guardar old input para repoblar formulario en caso de error
+    \Core\Security::saveOld($_POST);
+
     try {
-        // Validaciones
-        if (empty($_POST['codigo'])) {
-            $errores[] = "El código es obligatorio";
+        // Validación con nueva clase Validator
+        $rules = [
+            'codigo' => 'required|max_len:20|unique:animales,codigo,' . $id,
+            'tipo' => 'required|in:vaca,ternero,toro',
+            'sexo' => 'required|in:hembra,macho',
+            'fecha_nacimiento' => 'required|date|date_before:' . date('Y-m-d'),
+            'peso_actual' => 'decimal|min:0|max:9999.99',
+            'precio_venta' => 'decimal|min:0|max:999999.99',
+            'fecha_venta' => 'date',
+        ];
+
+        $validation = \Core\Security::validate($_POST, $rules);
+
+        if (!$validation['valid']) {
+            $errores = [];
+            foreach ($validation['errors'] as $fieldErrors) {
+                $errores = array_merge($errores, $fieldErrors);
+            }
         }
-        if (empty($_POST['tipo'])) {
-            $errores[] = "El tipo es obligatorio";
-        }
-        if (empty($_POST['sexo'])) {
-            $errores[] = "El sexo es obligatorio";
-        }
-        
-        // Validar imagen si se subió
-        if (!empty($_FILES['imagen']['name'])) {
-            $erroresImagen = validarImagen($_FILES['imagen']);
-            $errores = array_merge($errores, $erroresImagen);
-        }
-        
+
         if (empty($errores)) {
-            // Actualizar animal (sin manejar imágenes aquí)
+            // Actualizar animal
             actualizarAnimal($id, $_POST, null);
-            header('Location: ver_animal.php?id=' . $id . '&mensaje=actualizado');
+            \Core\Security::clearOld();
+            \Core\Security::setFlash('success', 'Animal actualizado exitosamente');
+            header('Location: ver_animal.php?id=' . $id);
             exit;
         }
     } catch (Exception $e) {
@@ -185,6 +196,24 @@ $toros = obtenerToros();
     
     <div class="container">
         <div class="card">
+            <?php
+            $flashes = \Core\Security::getFlashes();
+            if (!empty($flashes['success'])): ?>
+            <div class="errores" style="background:#e8f5e9;border-color:#4caf50;color:#2e7d32;">
+                <?php foreach ($flashes['success'] as $msg): ?>
+                    <strong>✅ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($flashes['error'])): ?>
+            <div class="errores">
+                <?php foreach ($flashes['error'] as $msg): ?>
+                    <strong>❌ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
+            <?php endif; ?>
+
             <?php if (!empty($errores)): ?>
             <div class="errores">
                 <strong>⚠️ Errores encontrados:</strong>
@@ -197,8 +226,9 @@ $toros = obtenerToros();
             <?php endif; ?>
             
             <form method="POST" enctype="multipart/form-data">
+                <?= \Core\Security::csrfField() ?>
                 <input type="hidden" name="eliminar_imagen" id="eliminar_imagen" value="0">
-                
+
                 <h3 class="section-title">📋 Información Básica</h3>
                 
                 <div class="form-grid">
@@ -209,23 +239,23 @@ $toros = obtenerToros();
                     
                     <div class="form-group">
                         <label>Nombre</label>
-                        <input type="text" name="nombre" value="<?php echo htmlspecialchars($animal['nombre']); ?>">
+                        <input type="text" name="nombre" value="<?php echo htmlspecialchars(\Core\Security::old('nombre', $animal['nombre'])); ?>">
                     </div>
                     
                     <div class="form-group">
                         <label>Tipo *</label>
                         <select name="tipo" required>
-                            <option value="vaca" <?php echo $animal['tipo'] === 'vaca' ? 'selected' : ''; ?>>Vaca</option>
-                            <option value="ternero" <?php echo $animal['tipo'] === 'ternero' ? 'selected' : ''; ?>>Ternero</option>
-                            <option value="toro" <?php echo $animal['tipo'] === 'toro' ? 'selected' : ''; ?>>Toro</option>
+                            <option value="vaca" <?php echo \Core\Security::old('tipo', $animal['tipo']) === 'vaca' ? 'selected' : ''; ?>>Vaca</option>
+                            <option value="ternero" <?php echo \Core\Security::old('tipo', $animal['tipo']) === 'ternero' ? 'selected' : ''; ?>>Ternero</option>
+                            <option value="toro" <?php echo \Core\Security::old('tipo', $animal['tipo']) === 'toro' ? 'selected' : ''; ?>>Toro</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label>Sexo *</label>
                         <select name="sexo" required>
-                            <option value="hembra" <?php echo $animal['sexo'] === 'hembra' ? 'selected' : ''; ?>>Hembra</option>
-                            <option value="macho" <?php echo $animal['sexo'] === 'macho' ? 'selected' : ''; ?>>Macho</option>
+                            <option value="hembra" <?php echo \Core\Security::old('sexo', $animal['sexo']) === 'hembra' ? 'selected' : ''; ?>>Hembra</option>
+                            <option value="macho" <?php echo \Core\Security::old('sexo', $animal['sexo']) === 'macho' ? 'selected' : ''; ?>>Macho</option>
                         </select>
                     </div>
                     
@@ -236,17 +266,17 @@ $toros = obtenerToros();
                     
                     <div class="form-group">
                         <label>Peso Actual (kg)</label>
-                        <input type="number" step="0.01" name="peso_actual" value="<?php echo $animal['peso_actual']; ?>">
+                        <input type="number" step="0.01" name="peso_actual" value="<?php echo \Core\Security::old('peso_actual', $animal['peso_actual']); ?>">
                     </div>
                     
                     <div class="form-group">
                         <label>Raza</label>
-                        <input type="text" name="raza" value="<?php echo htmlspecialchars($animal['raza']); ?>">
+                        <input type="text" name="raza" value="<?php echo htmlspecialchars(\Core\Security::old('raza', $animal['raza'])); ?>">
                     </div>
                     
                     <div class="form-group">
                         <label>Color</label>
-                        <input type="text" name="color" value="<?php echo htmlspecialchars($animal['color']); ?>">
+                        <input type="text" name="color" value="<?php echo htmlspecialchars(\Core\Security::old('color', $animal['color'])); ?>">
                     </div>
                 </div>
                 
@@ -258,7 +288,7 @@ $toros = obtenerToros();
                         <select name="madre_id">
                             <option value="">Sin madre registrada</option>
                             <?php foreach ($vacas as $vaca): ?>
-                                <option value="<?php echo $vaca['id']; ?>" <?php echo $animal['madre_id'] == $vaca['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $vaca['id']; ?>" <?php echo \Core\Security::old('madre_id', $animal['madre_id']) == $vaca['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($vaca['codigo'] . ' - ' . $vaca['nombre']); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -270,7 +300,7 @@ $toros = obtenerToros();
                         <select name="padre_id">
                             <option value="">Sin padre registrado</option>
                             <?php foreach ($toros as $toro): ?>
-                                <option value="<?php echo $toro['id']; ?>" <?php echo $animal['padre_id'] == $toro['id'] ? 'selected' : ''; ?>>
+                                <option value="<?php echo $toro['id']; ?>" <?php echo \Core\Security::old('padre_id', $animal['padre_id']) == $toro['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($toro['codigo'] . ' - ' . $toro['nombre']); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -284,15 +314,15 @@ $toros = obtenerToros();
                     <div class="form-group">
                         <label>Estado</label>
                         <select name="estado_venta" id="estado_venta" onchange="toggleCamposVenta()">
-                            <option value="disponible" <?php echo $animal['estado_venta'] === 'disponible' ? 'selected' : ''; ?>>Disponible</option>
-                            <option value="reservado" <?php echo $animal['estado_venta'] === 'reservado' ? 'selected' : ''; ?>>Reservado</option>
-                            <option value="vendido" <?php echo $animal['estado_venta'] === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
+                            <option value="disponible" <?php echo \Core\Security::old('estado_venta', $animal['estado_venta']) === 'disponible' ? 'selected' : ''; ?>>Disponible</option>
+                            <option value="reservado" <?php echo \Core\Security::old('estado_venta', $animal['estado_venta']) === 'reservado' ? 'selected' : ''; ?>>Reservado</option>
+                            <option value="vendido" <?php echo \Core\Security::old('estado_venta', $animal['estado_venta']) === 'vendido' ? 'selected' : ''; ?>>Vendido</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label>Precio de Venta ($)</label>
-                        <input type="number" step="0.01" name="precio_venta" value="<?php echo $animal['precio_venta']; ?>">
+                        <input type="number" step="0.01" name="precio_venta" value="<?php echo \Core\Security::old('precio_venta', $animal['precio_venta']); ?>">
                     </div>
                 </div>
                 
@@ -300,12 +330,12 @@ $toros = obtenerToros();
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Fecha de Venta</label>
-                            <input type="date" name="fecha_venta" value="<?php echo $animal['fecha_venta']; ?>">
+                            <input type="date" name="fecha_venta" value="<?php echo \Core\Security::old('fecha_venta', $animal['fecha_venta']); ?>">
                         </div>
                         
                         <div class="form-group">
                             <label>Comprador</label>
-                            <input type="text" name="comprador" value="<?php echo htmlspecialchars($animal['comprador']); ?>">
+                            <input type="text" name="comprador" value="<?php echo htmlspecialchars(\Core\Security::old('comprador', $animal['comprador'])); ?>">
                         </div>
                     </div>
                 </div>
@@ -327,7 +357,7 @@ $toros = obtenerToros();
                 <h3 class="section-title">📝 Observaciones</h3>
                 
                 <div class="form-group full">
-                    <textarea name="observaciones"><?php echo htmlspecialchars($animal['observaciones']); ?></textarea>
+                    <textarea name="observaciones"><?php echo htmlspecialchars(\Core\Security::old('observaciones', $animal['observaciones'])); ?></textarea>
                 </div>
                 
                 <div style="margin-top: 30px;">

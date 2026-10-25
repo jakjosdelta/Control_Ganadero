@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/functions.php';
 
+// Verificar CSRF en POST
+\Core\Security::requireCsrf();
+
 $id = $_GET['id'] ?? 0;
 $animal = obtenerAnimal($id);
 
@@ -13,102 +16,126 @@ $hijos = obtenerHijos($id);
 $pesajes = obtenerPesajes($id);
 $imagenes = obtenerImagenesAnimal($id);
 
-$mensaje = '';
-if (isset($_GET['mensaje'])) {
-    if ($_GET['mensaje'] === 'creado') {
-        $mensaje = '✅ Animal creado exitosamente';
-    } elseif ($_GET['mensaje'] === 'actualizado') {
-        $mensaje = '✅ Animal actualizado exitosamente';
-    } elseif ($_GET['mensaje'] === 'pesaje_registrado') {
-        $mensaje = '✅ Pesaje registrado exitosamente';
-    } elseif ($_GET['mensaje'] === 'imagen_agregada') {
-        $mensaje = '✅ Imagen agregada exitosamente';
-    } elseif ($_GET['mensaje'] === 'imagen_eliminada') {
-        $mensaje = '✅ Imagen eliminada exitosamente';
-    } elseif ($_GET['mensaje'] === 'imagen_principal') {
-        $mensaje = '✅ Imagen principal actualizada';
-    }
-}
+$mensaje = [];
+$errores = [];
 
 // Registrar pesaje
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['registrar_pesaje'])) {
+    \Core\Security::saveOld($_POST);
+
     try {
-        registrarPesaje(
-            $id,
-            $_POST['fecha_pesaje'],
-            $_POST['peso'],
-            $_POST['observaciones_pesaje'] ?? null
-        );
-        header('Location: ver_animal.php?id=' . $id . '&mensaje=pesaje_registrado');
-        exit;
+        $rules = [
+            'fecha_pesaje' => 'required|date',
+            'peso' => 'required|decimal|min:0|max:9999.99',
+            'observaciones_pesaje' => 'max_len:500',
+        ];
+
+        $validation = \Core\Security::validate($_POST, $rules);
+
+        if (!$validation['valid']) {
+            $errores = [];
+            foreach ($validation['errors'] as $fieldErrors) {
+                $errores = array_merge($errores, $fieldErrors);
+            }
+        }
+
+        if (empty($errores)) {
+            registrarPesaje(
+                $id,
+                $_POST['fecha_pesaje'],
+                $_POST['peso'],
+                $_POST['observaciones_pesaje'] ?? null
+            );
+            \Core\Security::clearOld();
+            \Core\Security::setFlash('success', 'Pesaje registrado exitosamente');
+            header('Location: ver_animal.php?id=' . $id);
+            exit;
+        }
     } catch (Exception $e) {
-        $mensaje = '❌ Error: ' . $e->getMessage();
+        $errores[] = $e->getMessage();
     }
 }
 
 // Agregar imágenes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_imagenes'])) {
+    \Core\Security::saveOld($_POST);
+
     try {
-        $errores = [];
-        $subidas = 0;
-        
-        if (!empty($_FILES['imagenes']['name'][0])) {
-            $totalArchivos = count($_FILES['imagenes']['name']);
-            
-            for ($i = 0; $i < $totalArchivos; $i++) {
-                if ($_FILES['imagenes']['error'][$i] === UPLOAD_ERR_OK) {
-                    $file = [
-                        'name' => $_FILES['imagenes']['name'][$i],
-                        'type' => $_FILES['imagenes']['type'][$i],
-                        'tmp_name' => $_FILES['imagenes']['tmp_name'][$i],
-                        'error' => $_FILES['imagenes']['error'][$i],
-                        'size' => $_FILES['imagenes']['size'][$i]
-                    ];
-                    
-                    $descripcion = $_POST['descripciones'][$i] ?? null;
-                    
-                    try {
-                        agregarImagenAnimal($id, $file, $descripcion);
-                        $subidas++;
-                    } catch (Exception $e) {
-                        $errores[] = "Archivo " . ($i + 1) . ": " . $e->getMessage();
+        $rules = [
+            'imagenes' => 'file_mimes:image/jpeg,image/png,image/gif|file_max:5120',
+        ];
+
+        $validation = \Core\Security::validate($_POST, $rules);
+
+        if (!$validation['valid']) {
+            $errores = [];
+            foreach ($validation['errors'] as $fieldErrors) {
+                $errores = array_merge($errores, $fieldErrors);
+            }
+        }
+
+        if (empty($errores)) {
+            $subidas = 0;
+            if (!empty($_FILES['imagenes']['name'][0])) {
+                $totalArchivos = count($_FILES['imagenes']['name']);
+
+                for ($i = 0; $i < $totalArchivos; $i++) {
+                    if ($_FILES['imagenes']['error'][$i] === UPLOAD_ERR_OK) {
+                        $file = [
+                            'name' => $_FILES['imagenes']['name'][$i],
+                            'type' => $_FILES['imagenes']['type'][$i],
+                            'tmp_name' => $_FILES['imagenes']['tmp_name'][$i],
+                            'error' => $_FILES['imagenes']['error'][$i],
+                            'size' => $_FILES['imagenes']['size'][$i]
+                        ];
+
+                        $descripcion = $_POST['descripciones'][$i] ?? null;
+
+                        try {
+                            agregarImagenAnimal($id, $file, $descripcion);
+                            $subidas++;
+                        } catch (Exception $e) {
+                            error_log("Error subiendo imagen: " . $e->getMessage());
+                        }
                     }
                 }
             }
-            
+
             if ($subidas > 0) {
-                header('Location: ver_animal.php?id=' . $id . '&mensaje=imagen_agregada');
+                \Core\Security::clearOld();
+                \Core\Security::setFlash('success', 'Imagen(es) agregada(s) exitosamente');
+                header('Location: ver_animal.php?id=' . $id);
                 exit;
-            } elseif (!empty($errores)) {
-                $mensaje = '❌ Errores: ' . implode(', ', $errores);
+            } else {
+                $errores[] = 'Debe seleccionar al menos una imagen';
             }
-        } else {
-            $mensaje = '❌ Debe seleccionar al menos una imagen';
         }
     } catch (Exception $e) {
-        $mensaje = '❌ Error: ' . $e->getMessage();
+        $errores[] = $e->getMessage();
     }
 }
 
-// Establecer imagen principal
-if (isset($_GET['accion']) && $_GET['accion'] === 'principal' && isset($_GET['imagen_id'])) {
+// Establecer imagen principal (convertir a POST para CSRF)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'principal' && isset($_POST['imagen_id'])) {
     try {
-        establecerImagenPrincipal($_GET['imagen_id'], $id);
-        header('Location: ver_animal.php?id=' . $id . '&mensaje=imagen_principal');
+        establecerImagenPrincipal($_POST['imagen_id'], $id);
+        \Core\Security::setFlash('success', 'Imagen principal actualizada');
+        header('Location: ver_animal.php?id=' . $id);
         exit;
     } catch (Exception $e) {
-        $mensaje = '❌ Error: ' . $e->getMessage();
+        $errores[] = $e->getMessage();
     }
 }
 
-// Eliminar imagen
-if (isset($_GET['accion']) && $_GET['accion'] === 'eliminar_img' && isset($_GET['imagen_id'])) {
+// Eliminar imagen (convertir a POST para CSRF)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['accion'] === 'eliminar_img' && isset($_POST['imagen_id'])) {
     try {
-        eliminarImagenAnimal($_GET['imagen_id'], $id);
-        header('Location: ver_animal.php?id=' . $id . '&mensaje=imagen_eliminada');
+        eliminarImagenAnimal($_POST['imagen_id'], $id);
+        \Core\Security::setFlash('success', 'Imagen eliminada exitosamente');
+        header('Location: ver_animal.php?id=' . $id);
         exit;
     } catch (Exception $e) {
-        $mensaje = '❌ Error: ' . $e->getMessage();
+        $errores[] = $e->getMessage();
     }
 }
 ?>
@@ -446,9 +473,32 @@ td {
     </header>
     
     <div class="container">
-        <?php if ($mensaje): ?>
+        <?php
+        $flashes = \Core\Security::getFlashes();
+        if (!empty($flashes['success'])): ?>
             <div class="mensaje alert alert-success">
-                <i class="fas fa-check-circle"></i> <?php echo $mensaje; ?>
+                <?php foreach ($flashes['success'] as $msg): ?>
+                    <i class="fas fa-check-circle"></i> <?php echo htmlspecialchars($msg); ?>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($flashes['error'])): ?>
+            <div class="mensaje alert alert-danger">
+                <?php foreach ($flashes['error'] as $msg): ?>
+                    <i class="fas fa-exclamation-circle"></i> <?php echo htmlspecialchars($msg); ?>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($errores)): ?>
+            <div class="mensaje alert alert-danger">
+                <strong>⚠️ Errores:</strong>
+                <ul>
+                    <?php foreach ($errores as $error): ?>
+                        <li><?php echo htmlspecialchars($error); ?></li>
+                    <?php endforeach; ?>
+                </ul>
             </div>
         <?php endif; ?>
         
@@ -546,6 +596,8 @@ td {
                     <h3 style="margin-top:30px;margin-bottom:15px;color:#2e7d32;">➕ Agregar Nuevas Imágenes</h3>
                     
                     <form method="POST" enctype="multipart/form-data" id="formImagenes">
+                        <?= \Core\Security::csrfField() ?>
+                        <input type="hidden" name="agregar_imagenes" value="1">
                         <div class="upload-area" onclick="document.getElementById('input-imagenes').click()">
                             <div style="font-size:48px;margin-bottom:10px;">📁</div>
                             <p style="font-size:16px;font-weight:600;margin-bottom:5px;">Haz clic para seleccionar imágenes</p>
@@ -762,6 +814,8 @@ td {
         <div class="modal-content">
             <h2 style="margin-bottom:20px;"><i class="fas fa-weight"></i> Registrar Nuevo Pesaje</h2>
             <form method="POST">
+                <?= \Core\Security::csrfField() ?>
+                <input type="hidden" name="registrar_pesaje" value="1">
                 <div class="form-group">
                     <label><i class="fas fa-calendar"></i> Fecha *</label>
                     <input type="date" name="fecha_pesaje" value="<?php echo date('Y-m-d'); ?>" required class="form-control">
@@ -775,7 +829,7 @@ td {
                     <textarea name="observaciones_pesaje" rows="3" class="form-control"></textarea>
                 </div>
                 <div style="margin-top:20px;">
-                    <button type="submit" name="registrar_pesaje" class="btn btn-success">
+                    <button type="submit" class="btn btn-success">
                         <i class="fas fa-save"></i> Guardar
                     </button>
                     <button type="button" onclick="cerrarModalPesaje()" class="btn btn-secondary">
@@ -785,6 +839,18 @@ td {
             </form>
         </div>
     </div>
+
+    <!-- Formularios ocultos para acciones de imágenes (CSRF) -->
+    <form id="formImagenPrincipal" method="POST" style="display:none;">
+        <?= \Core\Security::csrfField() ?>
+        <input type="hidden" name="accion" value="principal">
+        <input type="hidden" name="imagen_id" id="imagen_id_principal">
+    </form>
+    <form id="formEliminarImagen" method="POST" style="display:none;">
+        <?= \Core\Security::csrfField() ?>
+        <input type="hidden" name="accion" value="eliminar_img">
+        <input type="hidden" name="imagen_id" id="imagen_id_eliminar">
+    </form>
     
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -867,13 +933,15 @@ td {
         
         function establecerPrincipal(imagenId) {
             if (confirm('¿Establecer esta imagen como principal?')) {
-                window.location.href = 'ver_animal.php?id=<?php echo $id; ?>&accion=principal&imagen_id=' + imagenId;
+                document.getElementById('imagen_id_principal').value = imagenId;
+                document.getElementById('formImagenPrincipal').submit();
             }
         }
-        
+
         function eliminarImagen(imagenId) {
             if (confirm('¿Está seguro de eliminar esta imagen?')) {
-                window.location.href = 'ver_animal.php?id=<?php echo $id; ?>&accion=eliminar_img&imagen_id=' + imagenId;
+                document.getElementById('imagen_id_eliminar').value = imagenId;
+                document.getElementById('formEliminarImagen').submit();
             }
         }
         

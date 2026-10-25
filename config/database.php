@@ -1,4 +1,9 @@
 <?php
+// Iniciar sesión (necesario para CSRF, flash messages, rate limit)
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 // Configuración de conexión a MySQL local
 define('DB_HOST', 'localhost');
 define('DB_USER', 'root');
@@ -17,6 +22,9 @@ define('UPLOAD_URL', 'uploads/');
 if (!file_exists(UPLOAD_DIR)) {
     mkdir(UPLOAD_DIR, 0777, true);
 }
+
+// Cargar utilidades de seguridad
+require_once __DIR__ . '/../core/Security.php';
 
 class Database {
     private static $instance = null;

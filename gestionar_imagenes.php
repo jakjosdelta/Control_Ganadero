@@ -1,6 +1,9 @@
 <?php
 require_once 'includes/functions.php';
 
+// Verificar CSRF en POST (incluyendo AJAX)
+\Core\Security::requireCsrf();
+
 $animalId = $_GET['animal_id'] ?? 0;
 $animal = obtenerAnimal($animalId);
 
@@ -10,11 +13,28 @@ if (!$animal) {
 }
 
 $imagenes = obtenerImagenesAnimal($animalId);
-$mensaje = '';
+$mensaje = [];
 $errores = [];
 
 // Agregar imágenes
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_imagenes'])) {
+    \Core\Security::saveOld($_POST);
+
+    try {
+        $rules = [
+            'imagenes' => 'file_mimes:image/jpeg,image/png,image/gif|file_max:5120',
+        ];
+
+        $validation = \Core\Security::validate($_POST, $rules);
+
+        if (!$validation['valid']) {
+            $errores = [];
+            foreach ($validation['errors'] as $fieldErrors) {
+                $errores = array_merge($errores, $fieldErrors);
+            }
+        }
+
+        if (empty($errores)) {
     try {
         if (!empty($_FILES['imagenes']['name'][0])) {
             $totalArchivos = count($_FILES['imagenes']['name']);
@@ -42,14 +62,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_imagenes'])) 
             }
             
             if ($subidas > 0) {
-                $mensaje = "✅ Se agregaron $subidas imagen(es) exitosamente";
-                $imagenes = obtenerImagenesAnimal($animalId); // Recargar
+                \Core\Security::clearOld();
+                \Core\Security::setFlash('success', "Se agregaron $subidas imagen(es) exitosamente");
+                header('Location: gestionar_imagenes.php?animal_id=' . $animalId);
+                exit;
+            } else {
+                $errores[] = "Debe seleccionar al menos una imagen";
             }
-        } else {
-            $errores[] = "Debe seleccionar al menos una imagen";
+        } catch (Exception $e) {
+            $errores[] = $e->getMessage();
         }
-    } catch (Exception $e) {
-        $errores[] = $e->getMessage();
     }
 }
 

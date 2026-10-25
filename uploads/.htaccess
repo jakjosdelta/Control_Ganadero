@@ -1,0 +1,41 @@
+# Seguridad: Impedir ejecución de scripts en el directorio de uploads
+# Solo servir archivos estáticos (imágenes, etc.)
+
+# Deshabilitar PHP
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php5.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php7.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag engine off
+</IfModule>
+
+# Deshabilitar CGI
+Options -ExecCGI
+AddHandler cgi-script .php .php3 .php4 .php5 .php7 .php8 .phtml .pl .py .rb .sh
+
+# Solo permitir tipos MIME de imagen seguros
+<FilesMatch "\.(gif|jpe?g|png|webp|svg)$">
+    ForceType image/jpeg
+</FilesMatch>
+
+# Denegar acceso a cualquier archivo que no sea imagen conocida
+<FilesMatch "\.(php|php3|php4|php5|php7|php8|phtml|pl|py|rb|sh|cgi|exe|bat|dll|so|jar)$">
+    Require all denied
+</FilesMatch>
+
+# Impedir listado de directorios
+Options -Indexes
+
+# Headers de seguridad para archivos servidos
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    Header set X-Frame-Options "DENY"
+    Header set Referrer-Policy "no-referrer"
+    Header set Content-Security-Policy "default-src 'none'; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
+</IfModule>

@@ -1,25 +1,40 @@
 <?php
 require_once 'includes/functions.php';
 
-$mensaje = '';
+// Verificar CSRF en POST
+\Core\Security::requireCsrf();
+
+$mensaje = [];
 $errores = [];
 
 // Crear preñez
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_prenez'])) {
+    \Core\Security::saveOld($_POST);
+
     try {
-        if (empty($_POST['vaca_id'])) {
-            $errores[] = "Debe seleccionar una vaca";
+        $rules = [
+            'vaca_id' => 'required',
+            'fecha_servicio' => 'required|date',
+            'fecha_parto_estimada' => 'required|date|date_after:' . date('Y-m-d'),
+            'tipo_servicio' => 'required|in:monta_natural,inseminacion',
+            'estado' => 'required|in:confirmada,sospechosa',
+        ];
+
+        $validation = \Core\Security::validate($_POST, $rules);
+
+        if (!$validation['valid']) {
+            $errores = [];
+            foreach ($validation['errors'] as $fieldErrors) {
+                $errores = array_merge($errores, $fieldErrors);
+            }
         }
-        if (empty($_POST['fecha_servicio'])) {
-            $errores[] = "La fecha de servicio es obligatoria";
-        }
-        if (empty($_POST['fecha_parto_estimada'])) {
-            $errores[] = "La fecha de parto estimada es obligatoria";
-        }
-        
+
         if (empty($errores)) {
             crearPrenez($_POST);
-            $mensaje = '✅ Preñez registrada exitosamente';
+            \Core\Security::clearOld();
+            \Core\Security::setFlash('success', 'Preñez registrada exitosamente');
+            header('Location: prenez.php');
+            exit;
         }
     } catch (Exception $e) {
         $errores[] = $e->getMessage();
@@ -28,9 +43,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['crear_prenez'])) {
 
 // Finalizar preñez
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['finalizar_prenez'])) {
+    \Core\Security::saveOld($_POST);
+
     try {
-        finalizarPrenez($_POST['prenez_id'], $_POST['ternero_id'], $_POST['fecha_parto_real']);
-        $mensaje = '✅ Parto registrado exitosamente';
+        $rules = [
+            'prenez_id' => 'required',
+            'ternero_id' => 'required',
+            'fecha_parto_real' => 'required|date',
+        ];
+
+        $validation = \Core\Security::validate($_POST, $rules);
+
+        if (!$validation['valid']) {
+            $errores = [];
+            foreach ($validation['errors'] as $fieldErrors) {
+                $errores = array_merge($errores, $fieldErrors);
+            }
+        }
+
+        if (empty($errores)) {
+            finalizarPrenez($_POST['prenez_id'], $_POST['ternero_id'], $_POST['fecha_parto_real']);
+            \Core\Security::clearOld();
+            \Core\Security::setFlash('success', 'Parto registrado exitosamente');
+            header('Location: prenez.php');
+            exit;
+        }
     } catch (Exception $e) {
         $errores[] = $e->getMessage();
     }
@@ -262,10 +299,24 @@ require_once 'includes/functions.php';
             <a href="reportes.php">📊 Reportes</a>
         </div>
         
-        <?php if ($mensaje): ?>
-            <div class="mensaje"><?php echo $mensaje; ?></div>
+        <?php
+        $flashes = \Core\Security::getFlashes();
+        if (!empty($flashes['success'])): ?>
+            <div class="mensaje">
+                <?php foreach ($flashes['success'] as $msg): ?>
+                    <strong>✅ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
         <?php endif; ?>
-        
+
+        <?php if (!empty($flashes['error'])): ?>
+            <div class="errores">
+                <?php foreach ($flashes['error'] as $msg): ?>
+                    <strong>❌ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (!empty($errores)): ?>
             <div class="errores">
                 <strong>⚠️ Errores:</strong>
@@ -278,13 +329,14 @@ require_once 'includes/functions.php';
         <div class="card">
             <h2 style="margin-bottom:20px;">➕ Registrar Nueva Preñez</h2>
             <form method="POST">
+                <?= \Core\Security::csrfField() ?>
                 <div class="form-grid">
                     <div class="form-group">
                         <label>Vaca *</label>
                         <select name="vaca_id" required>
                             <option value="">Seleccione...</option>
                             <?php foreach ($vacas as $vaca): ?>
-                                <option value="<?php echo $vaca['id']; ?>">
+                                <option value="<?php echo $vaca['id']; ?>" <?php echo \Core\Security::old('vaca_id') == $vaca['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($vaca['codigo'] . ' - ' . $vaca['nombre']); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -296,7 +348,7 @@ require_once 'includes/functions.php';
                         <select name="toro_id">
                             <option value="">Sin toro específico</option>
                             <?php foreach ($toros as $toro): ?>
-                                <option value="<?php echo $toro['id']; ?>">
+                                <option value="<?php echo $toro['id']; ?>" <?php echo \Core\Security::old('toro_id') == $toro['id'] ? 'selected' : ''; ?>>
                                     <?php echo htmlspecialchars($toro['codigo'] . ' - ' . $toro['nombre']); ?>
                                 </option>
                             <?php endforeach; ?>
@@ -305,28 +357,28 @@ require_once 'includes/functions.php';
                     
                     <div class="form-group">
                         <label>Fecha de Servicio *</label>
-                        <input type="date" name="fecha_servicio" required value="<?php echo date('Y-m-d'); ?>">
+                        <input type="date" name="fecha_servicio" required value="<?php echo \Core\Security::old('fecha_parto_real', date('Y-m-d')); ?>">
                     </div>
                     
                     <div class="form-group">
                         <label>Fecha Parto Estimada *</label>
-                        <input type="date" name="fecha_parto_estimada" required value="<?php echo date('Y-m-d', strtotime('+280 days')); ?>">
+                        <input type="date" name="fecha_parto_estimada" required value="<?php echo \Core\Security::old('fecha_parto_estimada', date('Y-m-d', strtotime('+280 days'))); ?>">
                         <small style="color:#666;">Gestación promedio: 280 días</small>
                     </div>
                     
                     <div class="form-group">
                         <label>Tipo de Servicio</label>
                         <select name="tipo_servicio">
-                            <option value="monta_natural">Monta Natural</option>
-                            <option value="inseminacion">Inseminación Artificial</option>
+                            <option value="monta_natural" <?php echo \Core\Security::old('tipo_servicio', 'monta_natural') === 'monta_natural' ? 'selected' : ''; ?>>Monta Natural</option>
+                            <option value="inseminacion" <?php echo \Core\Security::old('tipo_servicio') === 'inseminacion' ? 'selected' : ''; ?>>Inseminación Artificial</option>
                         </select>
                     </div>
                     
                     <div class="form-group">
                         <label>Estado</label>
                         <select name="estado">
-                            <option value="sospechosa">Sospechosa</option>
-                            <option value="confirmada">Confirmada</option>
+                            <option value="sospechosa" <?php echo \Core\Security::old('estado', 'sospechosa') === 'sospechosa' ? 'selected' : ''; ?>>Sospechosa</option>
+                            <option value="confirmada" <?php echo \Core\Security::old('estado') === 'confirmada' ? 'selected' : ''; ?>>Confirmada</option>
                         </select>
                     </div>
                 </div>
@@ -469,11 +521,12 @@ require_once 'includes/functions.php';
             <h2 style="margin-bottom:20px;">🐄 Registrar Parto</h2>
             <div id="infoVaca" style="background:#f5f5f5;padding:10px;border-radius:5px;margin-bottom:20px;"></div>
             <form method="POST">
+                <?= \Core\Security::csrfField() ?>
                 <input type="hidden" name="prenez_id" id="prenez_id">
                 
                 <div class="form-group">
                     <label>Fecha Real del Parto *</label>
-                    <input type="date" name="fecha_parto_real" required value="<?php echo date('Y-m-d'); ?>">
+                    <input type="date" name="fecha_parto_real" required value="<?php echo \Core\Security::old('fecha_parto_real', date('Y-m-d')); ?>">
                 </div>
                 
                 <div class="form-group">
@@ -484,7 +537,7 @@ require_once 'includes/functions.php';
                         $db = getDB();
                         $terneros = $db->query("SELECT id, codigo, nombre FROM animales WHERE tipo = 'ternero' AND NOT EXISTS (SELECT 1 FROM prenez WHERE ternero_id = animales.id) ORDER BY fecha_registro DESC")->fetchAll();
                         foreach ($terneros as $ternero): ?>
-                            <option value="<?php echo $ternero['id']; ?>">
+                            <option value="<?php echo $ternero['id']; ?>" <?php echo \Core\Security::old('ternero_id') == $ternero['id'] ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($ternero['codigo'] . ' - ' . ($ternero['nombre'] ?: 'Sin nombre')); ?>
                             </option>
                         <?php endforeach; ?>
