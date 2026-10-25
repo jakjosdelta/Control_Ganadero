@@ -74,17 +74,17 @@ function obtenerAnimales($filtros = [], $pagina = 1, $porPagina = 10) {
     $db = getDB();
     $where = [];
     $params = [];
-    
+
     if (!empty($filtros['tipo'])) {
         $where[] = "a.tipo = ?";
         $params[] = $filtros['tipo'];
     }
-    
+
     if (!empty($filtros['estado'])) {
         $where[] = "a.estado_venta = ?";
         $params[] = $filtros['estado'];
     }
-    
+
     if (!empty($filtros['buscar'])) {
         $where[] = "(a.codigo LIKE ? OR a.nombre LIKE ? OR a.raza LIKE ?)";
         $buscar = '%' . $filtros['buscar'] . '%';
@@ -92,33 +92,50 @@ function obtenerAnimales($filtros = [], $pagina = 1, $porPagina = 10) {
         $params[] = $buscar;
         $params[] = $buscar;
     }
-    
+
     $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-    
+
     // Contar total
     $sqlCount = "SELECT COUNT(*) as total FROM animales a $whereClause";
     $stmtCount = $db->prepare($sqlCount);
     $stmtCount->execute($params);
     $total = $stmtCount->fetch()['total'];
-    
-    // Obtener registros
+
+    // Obtener registros con imagen principal (evita N+1)
+    // Subconsulta para obtener la imagen principal por animal
     $offset = ($pagina - 1) * $porPagina;
-    $sql = "SELECT a.*, 
+    $sql = "SELECT a.*,
             m.nombre as nombre_madre, m.codigo as codigo_madre,
-            p.nombre as nombre_padre, p.codigo as codigo_padre
+            p.nombre as nombre_padre, p.codigo as codigo_padre,
+            img.nombre_archivo as imagen_principal
             FROM animales a
             LEFT JOIN animales m ON a.madre_id = m.id
             LEFT JOIN animales p ON a.padre_id = p.id
+            LEFT JOIN (
+                SELECT ia1.animal_id, ia1.nombre_archivo
+                FROM imagenes_animales ia1
+                INNER JOIN (
+                    SELECT animal_id, MIN(id) as min_id
+                    FROM imagenes_animales
+                    WHERE es_principal = 1
+                    GROUP BY animal_id
+                    UNION
+                    SELECT animal_id, MIN(id) as min_id
+                    FROM imagenes_animales
+                    WHERE animal_id NOT IN (SELECT animal_id FROM imagenes_animales WHERE es_principal = 1)
+                    GROUP BY animal_id
+                ) ia2 ON ia1.animal_id = ia2.animal_id AND ia1.id = ia2.min_id
+            ) img ON a.id = img.animal_id
             $whereClause
             ORDER BY a.fecha_registro DESC
             LIMIT ? OFFSET ?";
-    
+
     $params[] = $porPagina;
     $params[] = $offset;
-    
+
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
-    
+
     return [
         'animales' => $stmt->fetchAll(),
         'total' => $total,

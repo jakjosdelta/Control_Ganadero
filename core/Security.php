@@ -323,6 +323,47 @@ class Security
      * @param int $maxRequests máximas peticiones
      * @param int $windowSeconds ventana de tiempo
      */
+    // ==================== LOGGING SIMPLE ====================
+    public static function log(string $level, string $message, array $context = []): void
+    {
+        $logDir = __DIR__ . '/../storage/logs/';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0777, true);
+        }
+        $logFile = $logDir . 'app-' . date('Y-m-d') . '.log';
+        $entry = sprintf(
+            "[%s] %s: %s %s\n",
+            date('Y-m-d H:i:s'),
+            strtoupper($level),
+            $message,
+            $context ? ' | ' . json_encode($context, JSON_UNESCAPED_UNICODE) : ''
+        );
+        @file_put_contents($logFile, $entry, FILE_APPEND | LOCK_EX);
+    }
+
+    public static function logInfo(string $message, array $context = []): void
+    {
+        self::log('info', $message, $context);
+    }
+
+    public static function logError(string $message, array $context = []): void
+    {
+        self::log('error', $message, $context);
+    }
+
+    public static function logWarning(string $message, array $context = []): void
+    {
+        self::log('warning', $message, $context);
+    }
+
+    public static function logDebug(string $message, array $context = []): void
+    {
+        if (defined('APP_DEBUG') && APP_DEBUG) {
+            self::log('debug', $message, $context);
+        }
+    }
+
+    // ==================== RATE LIMIT SIMPLE ====================
     public static function rateLimit(string $action, int $maxRequests = 30, int $windowSeconds = 60): bool
     {
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';

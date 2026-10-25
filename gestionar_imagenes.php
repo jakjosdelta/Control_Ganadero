@@ -307,10 +307,24 @@ if (isset($_POST['ajax_descripcion'])) {
             <a href="editar_animal.php?id=<?php echo $animalId; ?>" class="btn btn-primary">✏️ Editar Datos</a>
         </div>
         
-        <?php if ($mensaje): ?>
-            <div class="mensaje"><?php echo $mensaje; ?></div>
+        <?php
+        $flashes = \Core\Security::getFlashes();
+        if (!empty($flashes['success'])): ?>
+            <div class="mensaje">
+                <?php foreach ($flashes['success'] as $msg): ?>
+                    <strong>✅ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
         <?php endif; ?>
-        
+
+        <?php if (!empty($flashes['error'])): ?>
+            <div class="errores">
+                <?php foreach ($flashes['error'] as $msg): ?>
+                    <strong>❌ <?php echo htmlspecialchars($msg); ?></strong>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+
         <?php if (!empty($errores)): ?>
             <div class="errores">
                 <strong>⚠️ Errores:</strong>
@@ -379,6 +393,8 @@ if (isset($_POST['ajax_descripcion'])) {
             <h2 style="margin-bottom:20px;color:#2e7d32;">➕ Agregar Nuevas Imágenes</h2>
             
             <form method="POST" enctype="multipart/form-data" id="formImagenes">
+                <?= \Core\Security::csrfField() ?>
+                <input type="hidden" name="agregar_imagenes" value="1">
                 <div class="upload-section" onclick="document.getElementById('input-imagenes').click()">
                     <div style="font-size:64px;margin-bottom:15px;">📁</div>
                     <h3 style="margin-bottom:10px;">Haz clic o arrastra imágenes aquí</h3>
@@ -411,8 +427,9 @@ if (isset($_POST['ajax_descripcion'])) {
     </div>
     
     <script>
+        const csrfToken = '<?= \Core\Security::getCsrfToken() ?>';
         let archivosSeleccionados = [];
-        
+
         // Previsualización
         function previsualizarImagenes(files) {
             const preview = document.getElementById('preview-grid');
@@ -493,7 +510,7 @@ if (isset($_POST['ajax_descripcion'])) {
             fetch('gestionar_imagenes.php?animal_id=<?php echo $animalId; ?>', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'ajax_principal=1&imagen_id=' + imagenId
+                body: 'ajax_principal=1&imagen_id=' + imagenId + '&_csrf=' + encodeURIComponent(csrfToken)
             })
             .then(r => r.json())
             .then(data => {
@@ -512,7 +529,7 @@ if (isset($_POST['ajax_descripcion'])) {
             fetch('gestionar_imagenes.php?animal_id=<?php echo $animalId; ?>', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'ajax_eliminar=1&imagen_id=' + imagenId
+                body: 'ajax_eliminar=1&imagen_id=' + imagenId + '&_csrf=' + encodeURIComponent(csrfToken)
             })
             .then(r => r.json())
             .then(data => {
@@ -530,7 +547,7 @@ if (isset($_POST['ajax_descripcion'])) {
             fetch('gestionar_imagenes.php?animal_id=<?php echo $animalId; ?>', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'ajax_descripcion=1&imagen_id=' + imagenId + '&descripcion=' + encodeURIComponent(descripcion)
+                body: 'ajax_descripcion=1&imagen_id=' + imagenId + '&descripcion=' + encodeURIComponent(descripcion) + '&_csrf=' + encodeURIComponent(csrfToken)
             })
             .then(r => r.json())
             .then(data => {

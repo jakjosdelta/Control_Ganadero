@@ -1,4 +1,10 @@
 <?php
+// Configuración de sesión ANTES de iniciarla
+ini_set('session.cookie_httponly', '1');
+ini_set('session.cookie_secure', '0'); // Cambiar a 1 en producción con HTTPS
+ini_set('session.use_strict_mode', '1');
+ini_set('session.gc_maxlifetime', '7200'); // 2 horas
+
 // Iniciar sesión (necesario para CSRF, flash messages, rate limit)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -23,8 +29,21 @@ if (!file_exists(UPLOAD_DIR)) {
     mkdir(UPLOAD_DIR, 0777, true);
 }
 
+// Cargar configuración de la app
+require_once __DIR__ . '/app.php';
+
 // Cargar utilidades de seguridad
 require_once __DIR__ . '/../core/Security.php';
+
+// Headers de seguridad (se envían antes de cualquier output)
+if (!headers_sent()) {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('X-XSS-Protection: 1; mode=block');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    // CSP básica - ajustar según necesidades (CDN de Bootstrap/FontAwesome)
+    header("Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data: https:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+}
 
 class Database {
     private static $instance = null;

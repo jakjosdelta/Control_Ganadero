@@ -202,10 +202,8 @@ $prenezActivas = $db->query("SELECT COUNT(*) as total FROM prenez WHERE estado I
                         <?php foreach ($resultado['animales'] as $animal): ?>
                         <tr class="fade-in">
                             <td>
-                                <?php 
-                                $imagenPrincipal = obtenerImagenPrincipal($animal['id']);
-                                if ($imagenPrincipal): ?>
-                                    <img src="<?php echo UPLOAD_URL . htmlspecialchars($imagenPrincipal['nombre_archivo']); ?>" 
+                                <?php if (!empty($animal['imagen_principal'])): ?>
+                                    <img src="<?php echo UPLOAD_URL . htmlspecialchars($animal['imagen_principal']); ?>"
                                          class="animal-img-table" alt="Animal">
                                 <?php else: ?>
                                     <div style="width:60px;height:60px;background:#f0f0f0;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">
@@ -268,10 +266,8 @@ $prenezActivas = $db->query("SELECT COUNT(*) as total FROM prenez WHERE estado I
             <?php foreach ($resultado['animales'] as $animal): ?>
             <div class="animal-card-mobile fade-in">
                 <div class="animal-card-header">
-                    <?php 
-                    $imagenPrincipal = obtenerImagenPrincipal($animal['id']);
-                    if ($imagenPrincipal): ?>
-                        <img src="<?php echo UPLOAD_URL . htmlspecialchars($imagenPrincipal['nombre_archivo']); ?>" 
+                    <?php if (!empty($animal['imagen_principal'])): ?>
+                        <img src="<?php echo UPLOAD_URL . htmlspecialchars($animal['imagen_principal']); ?>"
                              class="animal-img-mobile" alt="Animal">
                     <?php else: ?>
                         <div class="animal-img-placeholder">🐄</div>
