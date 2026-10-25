@@ -1,0 +1,23 @@
+# Archivos de sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# XAMPP / PHP
+*.log
+error_log
+
+# Dependencias
+/vendor/
+/node_modules/
+
+# Configuración sensible
+.env
+.env.local
+config/database.php   # si tienes contraseñas aquí
+*.ini
+
+# Archivos temporales
+*.tmp
+*.bak
+*.swp

@@ -1,0 +1,659 @@
+/* =====================================================
+   CONTROL GANADERO - ESTILOS RESPONSIVOS
+   Diseño moderno con Bootstrap 5 y tarjetas móviles
+   ===================================================== */
+
+/* Variables de colores */
+:root {
+    --primary-color: #2e7d32;
+    --primary-dark: #1b5e20;
+    --primary-light: #43a047;
+    --secondary-color: #757575;
+    --danger-color: #d32f2f;
+    --warning-color: #f57c00;
+    --success-color: #4caf50;
+    --info-color: #1976d2;
+    --background: #f5f5f5;
+    --card-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    --border-radius: 8px;
+}
+
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--background);
+    color: #333;
+    line-height: 1.6;
+}
+
+/* Header */
+.main-header {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+    color: white;
+    padding: 1.5rem 0;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.main-header h1 {
+    font-size: 2rem;
+    margin-bottom: 0.3rem;
+}
+
+.main-header p {
+    opacity: 0.9;
+    font-size: 1rem;
+}
+
+/* Navegación */
+.menu-nav {
+    background: white;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    box-shadow: var(--card-shadow);
+}
+
+.menu-nav .btn {
+    margin: 0.25rem;
+}
+
+/* Cards generales */
+.card-custom {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--card-shadow);
+    transition: transform 0.2s;
+}
+
+.card-custom:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Botones personalizados */
+.btn {
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: all 0.3s;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-primary-custom {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary-custom:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+/* Badges */
+.badge-custom {
+    padding: 0.4rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.badge-vaca { background: #e3f2fd; color: #1976d2; }
+.badge-ternero { background: #fff3e0; color: #f57c00; }
+.badge-toro { background: #fce4ec; color: #c2185b; }
+.badge-disponible { background: #e8f5e9; color: #2e7d32; }
+.badge-vendido { background: #ffebee; color: #c62828; }
+.badge-reservado { background: #fff9c4; color: #f57f17; }
+
+/* =====================================================
+   VISTA DE ESCRITORIO - TABLA TRADICIONAL
+   ===================================================== */
+@media (min-width: 768px) {
+    .animal-list-desktop {
+        display: block;
+    }
+    
+    .animal-list-mobile {
+        display: none;
+    }
+    
+    .table-responsive-custom {
+        background: white;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+        box-shadow: var(--card-shadow);
+    }
+    
+    .table-custom {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 0;
+    }
+    
+    .table-custom thead {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .table-custom th {
+        padding: 1rem;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.9rem;
+        white-space: nowrap;
+    }
+    
+    .table-custom td {
+        padding: 0.9rem 1rem;
+        border-bottom: 1px solid #eee;
+        vertical-align: middle;
+    }
+    
+    .table-custom tbody tr {
+        transition: background 0.2s;
+    }
+    
+    .table-custom tbody tr:hover {
+        background: #f9f9f9;
+    }
+    
+    .animal-img-table {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+}
+
+/* =====================================================
+   VISTA MÓVIL - TARJETAS
+   ===================================================== */
+@media (max-width: 767px) {
+    .animal-list-desktop {
+        display: none;
+    }
+    
+    .animal-list-mobile {
+        display: block;
+    }
+    
+    /* Tarjeta de animal móvil */
+    .animal-card-mobile {
+        background: white;
+        border-radius: var(--border-radius);
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--card-shadow);
+        border-left: 4px solid var(--primary-color);
+        transition: transform 0.2s;
+    }
+    
+    .animal-card-mobile:hover {
+        transform: translateX(4px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .animal-card-header {
+        display: flex;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .animal-img-mobile {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .animal-img-placeholder {
+        width: 80px;
+        height: 80px;
+        background: #f0f0f0;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        margin-right: 1rem;
+        flex-shrink: 0;
+    }
+    
+    .animal-card-title {
+        flex: 1;
+    }
+    
+    .animal-card-title h3 {
+        font-size: 1.2rem;
+        margin-bottom: 0.3rem;
+        color: var(--primary-color);
+    }
+    
+    .animal-card-title p {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 0;
+    }
+    
+    .animal-card-body {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.8rem;
+        margin-bottom: 1rem;
+    }
+    
+    .animal-info-item {
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .animal-info-label {
+        font-size: 0.75rem;
+        color: #666;
+        text-transform: uppercase;
+        font-weight: 600;
+        margin-bottom: 0.2rem;
+    }
+    
+    .animal-info-value {
+        font-size: 0.95rem;
+        color: #333;
+        font-weight: 500;
+    }
+    
+    .animal-card-footer {
+        display: flex;
+        gap: 0.5rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid #eee;
+        flex-wrap: wrap;
+    }
+    
+    .animal-card-footer .btn {
+        flex: 1;
+        min-width: calc(50% - 0.25rem);
+        padding: 0.5rem;
+        font-size: 0.85rem;
+    }
+    
+    /* Ajustes generales móvil */
+    .main-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .main-header p {
+        font-size: 0.9rem;
+    }
+    
+    .menu-nav {
+        text-align: center;
+    }
+    
+    .menu-nav .btn {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+    
+    /* Estadísticas en móvil */
+    .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+    }
+    
+    .stat-card {
+        padding: 1rem !important;
+    }
+    
+    .stat-card .numero {
+        font-size: 1.8rem !important;
+    }
+    
+    /* Filtros en móvil */
+    .filtros-form {
+        flex-direction: column;
+    }
+    
+    .filtros-form .form-group {
+        width: 100% !important;
+        min-width: 100% !important;
+    }
+    
+    .filtros-form .btn {
+        width: 100%;
+        margin: 0.25rem 0;
+    }
+}
+
+/* =====================================================
+   NOTIFICACIONES
+   ===================================================== */
+.notificaciones {
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-left: 4px solid #ffc107;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.notificaciones h3 {
+    color: #856404;
+    margin-bottom: 0.8rem;
+    font-size: 1.1rem;
+}
+
+.notificacion-item {
+    padding: 0.6rem;
+    margin: 0.5rem 0;
+    background: white;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+/* =====================================================
+   PAGINACIÓN RESPONSIVA
+   ===================================================== */
+.pagination-custom {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    padding: 1rem;
+    flex-wrap: wrap;
+}
+
+.pagination-custom a,
+.pagination-custom span {
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--primary-color);
+    background: white;
+    border: 1px solid #ddd;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.pagination-custom a:hover {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.pagination-custom .active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+@media (max-width: 576px) {
+    .pagination-custom a,
+    .pagination-custom span {
+        padding: 0.4rem 0.7rem;
+        font-size: 0.85rem;
+    }
+}
+
+/* =====================================================
+   FORMULARIOS RESPONSIVOS
+   ===================================================== */
+.form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+    .form-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #555;
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.7rem;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    transition: border-color 0.3s;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(46, 125, 50, 0.1);
+}
+
+/* =====================================================
+   GALERÍA DE IMÁGENES RESPONSIVA
+   ===================================================== */
+.galeria {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 576px) {
+    .galeria {
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 0.8rem;
+    }
+}
+
+.imagen-item {
+    position: relative;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    border: 3px solid transparent;
+    transition: all 0.3s;
+}
+
+.imagen-item.principal {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 15px rgba(46, 125, 50, 0.3);
+}
+
+.imagen-item img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    display: block;
+}
+
+@media (max-width: 576px) {
+    .imagen-item img {
+        height: 150px;
+    }
+}
+
+/* =====================================================
+   MENSAJES Y ALERTAS
+   ===================================================== */
+.mensaje {
+    background: #e8f5e9;
+    border: 1px solid #4caf50;
+    border-left: 4px solid #4caf50;
+    color: #2e7d32;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+
+.errores {
+    background: #ffebee;
+    border: 1px solid #ef5350;
+    border-left: 4px solid #ef5350;
+    color: #c62828;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+}
+
+/* =====================================================
+   MODALES RESPONSIVOS
+   ===================================================== */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.modal-content {
+    background: white;
+    width: 100%;
+    max-width: 600px;
+    margin: 2rem auto;
+    border-radius: var(--border-radius);
+    padding: 2rem;
+}
+
+@media (max-width: 576px) {
+    .modal-content {
+        padding: 1.5rem;
+        margin: 1rem auto;
+    }
+}
+
+/* =====================================================
+   REPORTES Y GRÁFICOS
+   ===================================================== */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: var(--border-radius);
+    box-shadow: var(--card-shadow);
+    text-align: center;
+    transition: transform 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.stat-card h3 {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card .numero {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+/* =====================================================
+   TABLAS RESPONSIVAS GENERALES
+   ===================================================== */
+@media (max-width: 767px) {
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    
+    .table-responsive table {
+        min-width: 600px;
+    }
+}
+
+/* =====================================================
+   UTILIDADES
+   ===================================================== */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.mb-1 { margin-bottom: 0.5rem; }
+.mb-2 { margin-bottom: 1rem; }
+.mb-3 { margin-bottom: 1.5rem; }
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+
+.d-none { display: none; }
+.d-block { display: block; }
+
+@media (max-width: 767px) {
+    .d-md-none { display: none; }
+    .d-md-block { display: block; }
+}
+
+/* =====================================================
+   ANIMACIONES
+   ===================================================== */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.fade-in {
+    animation: fadeIn 0.3s ease-in;
+}
+
+/* =====================================================
+   IMPRESIÓN
+   ===================================================== */
+@media print {
+    .menu-nav,
+    .animal-card-footer,
+    .btn,
+    .pagination-custom {
+        display: none !important;
+    }
+    
+    body {
+        background: white;
+    }
+    
+    .card-custom {
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+}
