@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_imagenes'])) 
                         $file = [
                             'name' => $_FILES['imagenes']['name'][$i],
                             'type' => $_FILES['imagenes']['type'][$i],
-                            'tmp_name' => $_FILES['imagenis']['tmp_name'][$i],
+                            'tmp_name' => $_FILES['imagenes']['tmp_name'][$i],
                             'error' => $_FILES['imagenes']['error'][$i],
                             'size' => $_FILES['imagenes']['size'][$i]
                         ];
@@ -219,11 +219,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
         </div>
 
         <div class="grid" style="grid-template-columns: 1fr; gap: var(--space-6);">
-            @media (min-width: 992px) {
-                .grid {
-                    grid-template-columns: 380px 1fr;
-                }
-            }
             <style>
                 @media (min-width: 992px) {
                     .grid { grid-template-columns: 380px 1fr; gap: var(--space-6); }
@@ -540,9 +535,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['accion']) && $_POST['
     </main>
 
     <!-- Modal Pesaje -->
-    <div class="modal" id="modalPesaje" style="display: none;">
-        <div class="modal-backdrop" onclick="cerrarModalPesaje()"></div>
-        <div class="modal-content">
+    <div class="modal-backdrop" id="modalPesaje" style="display: none;">
+        <div class="modal">
             <div class="modal-header">
                 <h2 class="modal-title"><i class="fas fa-weight"></i> Registrar Nuevo Pesaje</h2>
                 <button class="modal-close" onclick="cerrarModalPesaje()" aria-label="Cerrar">

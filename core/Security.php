@@ -141,7 +141,7 @@ class Security
                 break;
 
             case 'date':
-                if ($value !== '' && !$self::isValidDate($value)) {
+                if ($value !== '' && !self::isValidDate($value)) {
                     return "El campo {$label} debe ser una fecha válida (YYYY-MM-DD).";
                 }
                 break;
@@ -245,7 +245,7 @@ class Security
 
     private static function isValidDate(string $date): bool
     {
-        $d = DateTime::createFromFormat('Y-m-d', $date);
+        $d = \DateTime::createFromFormat('Y-m-d', $date);
         return $d && $d->format('Y-m-d') === $date;
     }
 

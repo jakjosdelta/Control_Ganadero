@@ -187,12 +187,12 @@ $toros = obtenerToros();
                     <div class="form-row">
                         <div class="form-group">
                             <label class="form-label"><i class="fas fa-calendar"></i> Fecha de Servicio <span class="text-danger">*</span></label>
-                            <input type="date" class="form-input" name="fecha_servicio" required value="<?php echo \Core\Security::old('fecha_servicio', date('Y-m-d')); ?>">
+                            <input type="date" class="form-input" name="fecha_servicio" id="fecha_servicio" required value="<?php echo \Core\Security::old('fecha_servicio', date('Y-m-d')); ?>">
                         </div>
                         <div class="form-group">
                             <label class="form-label"><i class="fas fa-calendar-check"></i> Fecha Parto Estimada <span class="text-danger">*</span></label>
-                            <input type="date" class="form-input" name="fecha_parto_estimada" required value="<?php echo \Core\Security::old('fecha_parto_estimada', date('Y-m-d', strtotime('+280 days'))); ?>">
-                            <p class="form-hint">Gestación promedio: 280 días</p>
+                            <input type="date" class="form-input" name="fecha_parto_estimada" id="fecha_parto_estimada" required value="<?php echo \Core\Security::old('fecha_parto_estimada', date('Y-m-d', strtotime('+280 days'))); ?>">
+                            <p class="form-hint">Gestación promedio: 280 días (se calcula automáticamente al cambiar la fecha de servicio)</p>
                         </div>
                     </div>
 
@@ -370,9 +370,8 @@ $toros = obtenerToros();
     </main>
 
     <!-- Modal Registrar Parto -->
-    <div class="modal" id="modalParto" style="display: none;">
-        <div class="modal-backdrop" onclick="cerrarModalParto()"></div>
-        <div class="modal-content">
+    <div class="modal-backdrop" id="modalParto" style="display: none;">
+        <div class="modal">
             <div class="modal-header">
                 <h2 class="modal-title"><i class="fas fa-baby"></i> Registrar Parto</h2>
                 <button class="modal-close" onclick="cerrarModalParto()" aria-label="Cerrar"><i class="fas fa-times"></i></button>
@@ -418,6 +417,38 @@ $toros = obtenerToros();
     </div>
 
     <script>
+        // Calcular automáticamente la fecha de parto estimada al cambiar la fecha de servicio
+        document.addEventListener('DOMContentLoaded', function() {
+            const fechaServicio = document.getElementById('fecha_servicio');
+            const fechaPartoEstimada = document.getElementById('fecha_parto_estimada');
+
+            if (fechaServicio && fechaPartoEstimada) {
+                fechaServicio.addEventListener('change', function() {
+                    if (this.value) {
+                        const fecha = new Date(this.value);
+                        fecha.setDate(fecha.getDate() + 280); // Gestación promedio bovina: 280 días
+                        const año = fecha.getFullYear();
+                        const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                        const dia = String(fecha.getDate()).padStart(2, '0');
+                        fechaPartoEstimada.value = `${año}-${mes}-${dia}`;
+                    }
+                });
+
+                // Si ya hay una fecha de servicio cargada (old input) y el campo de parto está vacío o es el valor por defecto,
+                // calcular automáticamente al cargar la página
+                if (fechaServicio.value && !fechaPartoEstimada.dataset.manual) {
+                    // Solo auto-calcular si el usuario no ha modificado manualmente el campo
+                    const event = new Event('change');
+                    fechaServicio.dispatchEvent(event);
+                }
+
+                // Marcar como modificado manualmente si el usuario edita el campo
+                fechaPartoEstimada.addEventListener('input', function() {
+                    this.dataset.manual = 'true';
+                });
+            }
+        });
+
         function mostrarModalParto(prenezId, codigoVaca) {
             document.getElementById('prenez_id').value = prenezId;
             document.getElementById('infoVaca').innerHTML = '<strong><i class="fas fa-cow"></i> Vaca:</strong> ' + codigoVaca;
